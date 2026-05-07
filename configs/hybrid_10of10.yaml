@@ -1,0 +1,52 @@
+capture_enter_angle_radians: 0.95
+capture_exit_angle_radians: 1.35
+capture_enter_cart_margin: 0.25
+capture_exit_cart_margin: 0.12
+capture_max_angular_velocity: 28.0
+stabilize_enter_angle_radians: 0.3
+stabilize_enter_velocity_radians_per_second: 3.5
+stabilize_exit_angle_radians: 0.6
+stabilize_exit_velocity_radians_per_second: 8.0
+stabilize_enter_cart_margin: 0.22
+lqr_viability_enabled: false
+lqr_viability_steps: 80
+lqr_viability_angle_radians: 0.45
+lqr_viability_velocity_radians_per_second: 7.0
+lqr_viability_cart_margin: 0.15
+stabilizer_cooldown_steps: 0
+safety_filter_enabled: false
+safety_margin: 0.3
+safety_position_gain: 24.0
+safety_velocity_gain: 10.0
+lqr_q_diag:
+- 2.0
+- 1.0
+- 180.0
+- 18.0
+- 180.0
+- 18.0
+lqr_r: 0.08
+mpc:
+  horizon: 8
+  beam_width: 24
+  replan_interval: 2
+  force_grid:
+  - -20.0
+  - -14.0
+  - -8.0
+  - -4.0
+  - 0.0
+  - 4.0
+  - 8.0
+  - 14.0
+  - 20.0
+  angle_weight: 140.0
+  angular_velocity_weight: 10.0
+  cart_position_weight: 5.0
+  cart_velocity_weight: 1.0
+  action_weight: 0.02
+  action_change_weight: 0.01
+  boundary_weight: 80.0
+  terminal_weight: 2.0
+  terminal_basin_bonus: 0.0
+  discount: 0.98

@@ -1,0 +1,81 @@
+env:
+  reset_mode: hanging
+  max_episode_steps: 1500
+  terminate_on_angle: false
+  angle_termination_radians: 3.141592653589793
+  success_angle_radians: 0.20943951023931953
+  success_velocity_radians_per_second: 1.0
+  success_hold_steps: 100
+  position_reward_weight: 0.04
+  velocity_reward_weight: 0.0015
+  action_reward_weight: 0.001
+  boundary_reward_weight: 0.35
+  hold_reward: 0.08
+  upright_reward: 2.5
+  success_bonus: 12.0
+  failure_penalty: 25.0
+  handoff_angle_radians: 0.35
+  handoff_velocity_radians_per_second: 3.5
+  handoff_cart_margin: 0.35
+  handoff_bonus: 0.0
+  handoff_velocity_penalty_weight: 0.0
+  handoff_angle_band_radians: 0.45
+
+physics:
+  gravity: 9.80665
+  cart_mass: 1.0
+  link1_mass: 0.1
+  link2_mass: 0.1
+  link1_length: 0.5
+  link2_length: 0.5
+  track_limit: 2.4
+  max_force: 20.0
+  dt: 0.02
+  initial_angle_range: 0.08
+  initial_angular_velocity_range: 0.5
+  initial_cart_position_range: 0.05
+  initial_cart_velocity_range: 0.05
+
+training:
+  seed: 7
+  total_steps: 3000000
+  rollout_steps: 256
+  num_envs: 16
+  update_epochs: 8
+  minibatch_size: 512
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_coef: 0.2
+  entropy_coef: 0.01
+  value_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: 0.03
+  normalize_advantages: true
+  eval_every_updates: 5
+  eval_episodes: 5
+  success_threshold: 0.2
+  learning_rate: 0.0003
+  hidden_sizes: [256, 256]
+  initial_log_std: 0.0
+  save_every_updates: 5
+  curriculum_stages:
+    - until_step: 300000
+      reset_mode: upright
+      angle_center: 0.0
+      angle_range: 0.35
+      angular_velocity_range: 1.0
+    - until_step: 900000
+      reset_mode: custom
+      angle_center: 1.5707963267948966
+      angle_range: 0.75
+      angular_velocity_range: 1.5
+    - until_step: 1500000
+      reset_mode: custom
+      angle_center: 2.5
+      angle_range: 0.65
+      angular_velocity_range: 1.5
+    - until_step: 3000000
+      reset_mode: hanging
+      angle_center: 3.141592653589793
+      angle_range: 0.12
+      angular_velocity_range: 0.6

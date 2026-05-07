@@ -1,0 +1,61 @@
+env:
+  reset_mode: upright
+  max_episode_steps: 1000
+  terminate_on_angle: true
+  angle_termination_radians: 0.7853981633974483
+  success_angle_radians: 0.20943951023931953
+  success_velocity_radians_per_second: 1.0
+  success_hold_steps: 100
+  position_reward_weight: 0.01
+  velocity_reward_weight: 0.001
+  action_reward_weight: 0.0005
+  boundary_reward_weight: 0.2
+  hold_reward: 0.05
+  upright_reward: 2.0
+  success_bonus: 5.0
+  failure_penalty: 25.0
+  handoff_angle_radians: 0.35
+  handoff_velocity_radians_per_second: 3.5
+  handoff_cart_margin: 0.35
+  handoff_bonus: 0.0
+  handoff_velocity_penalty_weight: 0.0
+  handoff_angle_band_radians: 0.45
+
+physics:
+  gravity: 9.80665
+  cart_mass: 1.0
+  link1_mass: 0.1
+  link2_mass: 0.1
+  link1_length: 0.5
+  link2_length: 0.5
+  track_limit: 2.4
+  max_force: 20.0
+  dt: 0.02
+  initial_angle_range: 0.08
+  initial_angular_velocity_range: 0.1
+  initial_cart_position_range: 0.05
+  initial_cart_velocity_range: 0.05
+
+training:
+  seed: 7
+  total_steps: 200000
+  rollout_steps: 2048
+  num_envs: 1
+  update_epochs: 10
+  minibatch_size: 256
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_coef: 0.2
+  entropy_coef: 0.0
+  value_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: 0.03
+  normalize_advantages: true
+  eval_every_updates: 5
+  eval_episodes: 5
+  success_threshold: 0.2
+  learning_rate: 0.0003
+  hidden_sizes: [128, 128]
+  initial_log_std: 0.0
+  save_every_updates: 10
+  curriculum_stages: []

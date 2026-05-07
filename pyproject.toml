@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inverted-double-pendulum-rl"
+version = "0.1.0"
+description = "Gymnasium and PyTorch project for balancing an inverted double pendulum on a cart."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium>=0.29",
+    "matplotlib>=3.8",
+    "numpy>=1.24",
+    "pillow>=10.0",
+    "pyyaml>=6.0",
+    "scipy>=1.10",
+    "torch>=2.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+idp-train = "idp_rl.train:main"
+idp-evaluate = "idp_rl.evaluate:main"
+idp-agent = "idp_rl.agent:main"
+idp-hybrid-agent = "idp_rl.hybrid_agent:main"
+idp-tune-hybrid = "idp_rl.tune_hybrid:main"
+idp-pretrain-stabilizer = "idp_rl.pretrain_stabilizer:main"
+idp-collect-handoff-states = "idp_rl.collect_handoff_states:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
