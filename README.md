@@ -1,10 +1,19 @@
 # Inverted Double Pendulum RL
 
-This project simulates an inverted double pendulum mounted on a cart constrained to one horizontal axis, then trains a deep reinforcement learning controller to balance both links upright by applying horizontal force to the cart.
+This repository simulates an inverted double pendulum on a cart and trains controllers to swing up, capture, and balance the links upright.
 
-The simulator uses derived equations of motion with Earth gravity, RK4 integration, and a Gymnasium-compatible environment. Training uses a PyTorch PPO actor-critic network and saves checkpoints, metrics, rollout data, and config snapshots.
+The project includes:
 
-## Setup
+- A derived dynamics model for a cart-constrained double pendulum
+- RK4 time integration with Earth gravity
+- A Gymnasium-compatible environment
+- PyTorch PPO training and evaluation
+- Hybrid control experiments that combine RL, MPC-style capture, and LQR stabilization
+- Checkpoint, metrics, rollout, animation, and config snapshot outputs
+
+## Quick Start
+
+Create a virtual environment and install the project:
 
 ```powershell
 python -m venv .venv
@@ -12,92 +21,154 @@ python -m venv .venv
 python -m pip install -e .[dev]
 ```
 
-## Train
-
-```powershell
-idp-train --config configs/default.yaml --run-dir runs/balance_v1 --total-steps 200000
-```
-
-Swing-up from a hanging start:
-
-```powershell
-idp-train --config configs/swingup.yaml --run-dir runs/swingup_v1 --device auto
-```
-
-Curriculum swing-up-and-hold training with vectorized PPO:
-
-```powershell
-python -m idp_rl.train --config configs/swingup_curriculum.yaml --run-dir runs/swingup_curriculum --device auto --max-train-seconds 1800
-```
-
-For a quick smoke run:
+Run a short smoke training job:
 
 ```powershell
 idp-train --config configs/default.yaml --run-dir runs/smoke --total-steps 2048 --rollout-steps 256
 ```
 
-## Evaluate
+Evaluate a trained checkpoint:
 
 ```powershell
 idp-evaluate --config configs/default.yaml --checkpoint runs/balance_v1/checkpoints/latest.pt --episodes 3 --render
 ```
 
-Run the latest saved swing-up checkpoint as an agent without retraining and save a GIF:
-
-```powershell
-idp-evaluate --config configs/swingup.yaml --run-dir runs/swingup_v1 --episodes 1 --device auto --save-animation runs/swingup_v1/animation.gif
-```
-
-Evaluate the latest or best curriculum checkpoint:
-
-```powershell
-python -m idp_rl.evaluate --config configs/swingup_curriculum.yaml --run-dir runs/swingup_curriculum --episodes 10 --device auto --save-animation runs/swingup_curriculum/latest.gif
-python -m idp_rl.evaluate --config configs/swingup_curriculum.yaml --checkpoint runs/swingup_curriculum/checkpoints/best.pt --episodes 10 --device auto --save-animation runs/swingup_curriculum/best.gif
-```
-
-Two-stage swing-up plus stabilizer:
-
-```powershell
-python -m idp_rl.train --config configs/stabilizer.yaml --run-dir runs/stabilizer --device auto --max-train-seconds 1200
-python -m idp_rl.evaluate --config configs/stabilizer.yaml --run-dir runs/stabilizer --episodes 10 --device auto --save-animation runs/stabilizer/latest.gif
-python -m idp_rl.agent --swingup-config configs/swingup_curriculum.yaml --swingup-checkpoint runs/swingup_curriculum/checkpoints/latest.pt --stabilizer-config configs/stabilizer.yaml --stabilizer-checkpoint runs/stabilizer/checkpoints/latest.pt --episodes 10 --device auto --save-animation runs/two_stage/latest.gif
-```
-
-The two-stage runner is used because the swing-up policy reaches near-vertical states but does not slow the links enough to satisfy the hold criterion. A dedicated stabilizer learns the capture/hold behavior from near-upright states, and the handoff controller switches to it when both links enter the capture region.
-
-LQR-warm-started stabilizer:
-
-```powershell
-python -m idp_rl.pretrain_stabilizer --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr --samples 200000 --epochs 20 --batch-size 2048 --device auto
-python -m idp_rl.evaluate --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr --episodes 10 --device auto --save-animation runs/stabilizer_lqr/pretrained.gif
-python -m idp_rl.train --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr_finetune --device auto --max-train-seconds 2400 --resume-checkpoint runs/stabilizer_lqr/checkpoints/latest.pt
-python -m idp_rl.agent --swingup-config configs/swingup_curriculum.yaml --swingup-checkpoint runs/swingup_curriculum/checkpoints/latest.pt --stabilizer-config configs/stabilizer_lqr.yaml --stabilizer-checkpoint runs/stabilizer_lqr_finetune/checkpoints/latest.pt --episodes 10 --device auto --save-animation runs/two_stage_lqr/latest.gif
-```
-
-The LQR warm start numerically linearizes the current dynamics around upright, solves a continuous-time Riccati equation, and trains the neural actor to imitate that local stabilizing controller before PPO fine-tuning.
-
-Hybrid deployment controller:
-
-```powershell
-python -m idp_rl.hybrid_agent --swingup-config configs/swingup_reliability.yaml --swingup-checkpoint runs/swingup_reliability/checkpoints/best_two_stage.pt --config configs/hybrid_reliable.yaml --episodes 10 --device auto --save-animation runs/hybrid_reliable/latest.gif
-```
-
-The hybrid runner keeps the learned RL swing-up policy for energy building, then uses a short-horizon MPC-style capture controller to brake high-speed near-vertical passes, and finally hands off to LQR inside the local stabilization basin. This is intentionally less pure than a single neural policy, but it targets the observed failure mode directly: fast fly-throughs that PPO and the neural stabilizer cannot capture reliably.
-
-Fixed-seed 10/10 portfolio controller:
-
-```powershell
-python -m idp_rl.hybrid_agent --swingup-config configs/swingup_reliability.yaml --swingup-checkpoints runs/swingup_reliability/checkpoints/best_two_stage.pt runs/swingup_reliability/checkpoints/step_102400.pt runs/swingup_reliability/checkpoints/step_327680.pt runs/swingup_reliability/checkpoints/step_81920.pt runs/swingup_reliability/checkpoints/step_1003520.pt --config configs/hybrid_10of10.yaml --episodes 10 --device auto --save-animation runs/hybrid_10of10/latest.gif
-```
-
-The portfolio mode uses the known simulator model at episode start to score several saved swing-up policies, then runs the predicted-best policy through the same MPC/LQR hybrid stack. It preserves the 20 N force limit while covering fixed seeds that different PPO checkpoints learned to solve.
-
-`--device auto` uses CUDA when `torch.cuda.is_available()` is true and otherwise falls back to CPU. Install a CUDA-enabled PyTorch wheel separately if your Python environment currently has a CPU-only build.
-
-## Test
+Run the test suite:
 
 ```powershell
 python -m pytest
 ```
 
-Tests that require Gymnasium or PyTorch are skipped when those optional runtime packages are not installed.
+Tests that need Gymnasium or PyTorch are skipped when those optional runtime packages are not installed.
+
+## Project Layout
+
+```text
+configs/     Training and controller configuration files
+src/idp_rl/  Dynamics, environments, PPO, controllers, and CLI entry points
+tests/       Unit and behavior tests
+runs/        Local training outputs, checkpoints, metrics, and animations
+```
+
+## Common Workflows
+
+### Balance From Near Upright
+
+Train a PPO controller for the default balancing task:
+
+```powershell
+idp-train --config configs/default.yaml --run-dir runs/balance_v1 --total-steps 200000
+```
+
+Evaluate the saved checkpoint:
+
+```powershell
+idp-evaluate --config configs/default.yaml --checkpoint runs/balance_v1/checkpoints/latest.pt --episodes 3 --render
+```
+
+### Swing Up From Hanging
+
+Train a swing-up policy:
+
+```powershell
+idp-train --config configs/swingup.yaml --run-dir runs/swingup_v1 --device auto
+```
+
+Evaluate the latest checkpoint and save a GIF:
+
+```powershell
+idp-evaluate --config configs/swingup.yaml --run-dir runs/swingup_v1 --episodes 1 --device auto --save-animation runs/swingup_v1/animation.gif
+```
+
+### Curriculum Swing-Up
+
+Run curriculum swing-up training with vectorized PPO:
+
+```powershell
+idp-train --config configs/swingup_curriculum.yaml --run-dir runs/swingup_curriculum --device auto --max-train-seconds 1800
+```
+
+Evaluate either the latest checkpoint or the best checkpoint:
+
+```powershell
+idp-evaluate --config configs/swingup_curriculum.yaml --run-dir runs/swingup_curriculum --episodes 10 --device auto --save-animation runs/swingup_curriculum/latest.gif
+idp-evaluate --config configs/swingup_curriculum.yaml --checkpoint runs/swingup_curriculum/checkpoints/best.pt --episodes 10 --device auto --save-animation runs/swingup_curriculum/best.gif
+```
+
+## Two-Stage Controllers
+
+The swing-up policy can reach near-vertical states, but it may pass through them too quickly to satisfy the hold criterion. Two-stage runners address this by using one controller for energy building and a second controller for capture and stabilization.
+
+### PPO Swing-Up Plus PPO Stabilizer
+
+Train a stabilizer from near-upright states:
+
+```powershell
+idp-train --config configs/stabilizer.yaml --run-dir runs/stabilizer --device auto --max-train-seconds 1200
+```
+
+Evaluate the stabilizer:
+
+```powershell
+idp-evaluate --config configs/stabilizer.yaml --run-dir runs/stabilizer --episodes 10 --device auto --save-animation runs/stabilizer/latest.gif
+```
+
+Run the two-stage agent:
+
+```powershell
+idp-agent --swingup-config configs/swingup_curriculum.yaml --swingup-checkpoint runs/swingup_curriculum/checkpoints/latest.pt --stabilizer-config configs/stabilizer.yaml --stabilizer-checkpoint runs/stabilizer/checkpoints/latest.pt --episodes 10 --device auto --save-animation runs/two_stage/latest.gif
+```
+
+### LQR-Warm-Started Stabilizer
+
+This workflow numerically linearizes the dynamics around upright, solves a continuous-time Riccati equation, and trains the neural actor to imitate the local LQR controller before PPO fine-tuning.
+
+Pretrain the stabilizer:
+
+```powershell
+idp-pretrain-stabilizer --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr --samples 200000 --epochs 20 --batch-size 2048 --device auto
+```
+
+Evaluate the pretrained policy:
+
+```powershell
+idp-evaluate --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr --episodes 10 --device auto --save-animation runs/stabilizer_lqr/pretrained.gif
+```
+
+Fine-tune with PPO:
+
+```powershell
+idp-train --config configs/stabilizer_lqr.yaml --run-dir runs/stabilizer_lqr_finetune --device auto --max-train-seconds 2400 --resume-checkpoint runs/stabilizer_lqr/checkpoints/latest.pt
+```
+
+Run the LQR-warm-started two-stage agent:
+
+```powershell
+idp-agent --swingup-config configs/swingup_curriculum.yaml --swingup-checkpoint runs/swingup_curriculum/checkpoints/latest.pt --stabilizer-config configs/stabilizer_lqr.yaml --stabilizer-checkpoint runs/stabilizer_lqr_finetune/checkpoints/latest.pt --episodes 10 --device auto --save-animation runs/two_stage_lqr/latest.gif
+```
+
+## Hybrid Controllers
+
+Hybrid runners keep the learned RL swing-up policy for energy building, then use model-based capture and local stabilization to target the main failure mode: fast near-vertical fly-throughs that a single neural policy may not reliably catch.
+
+### RL Swing-Up Plus MPC Capture Plus LQR
+
+```powershell
+idp-hybrid-agent --swingup-config configs/swingup_reliability.yaml --swingup-checkpoint runs/swingup_reliability/checkpoints/best_two_stage.pt --config configs/hybrid_reliable.yaml --episodes 10 --device auto --save-animation runs/hybrid_reliable/latest.gif
+```
+
+### Fixed-Seed Portfolio Controller
+
+Portfolio mode scores several saved swing-up policies at episode start with the known simulator model, then runs the predicted-best policy through the same MPC/LQR hybrid stack. It keeps the 20 N force limit while covering fixed seeds solved by different PPO checkpoints.
+
+```powershell
+idp-hybrid-agent --swingup-config configs/swingup_reliability.yaml --swingup-checkpoints runs/swingup_reliability/checkpoints/best_two_stage.pt runs/swingup_reliability/checkpoints/step_102400.pt runs/swingup_reliability/checkpoints/step_327680.pt runs/swingup_reliability/checkpoints/step_81920.pt runs/swingup_reliability/checkpoints/step_1003520.pt --config configs/hybrid_10of10.yaml --episodes 10 --device auto --save-animation runs/hybrid_10of10/latest.gif
+```
+
+## Runtime Notes
+
+`--device auto` uses CUDA when `torch.cuda.is_available()` is true. Otherwise, it falls back to CPU.
+
+If your environment installed a CPU-only PyTorch build, install a CUDA-enabled PyTorch wheel separately before running GPU training.
+
+Training and evaluation commands write outputs under the chosen `--run-dir`, including checkpoints, metrics, rollout data, animations, and copied config files.
