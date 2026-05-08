@@ -41,6 +41,29 @@ python -m pytest
 
 Tests that need Gymnasium or PyTorch are skipped when those optional runtime packages are not installed.
 
+## Docker
+
+Build a CPU-only image:
+
+```powershell
+docker build -t inverted-double-pendulum-rl .
+```
+
+Run the default container command. This performs a short smoke training run:
+
+```powershell
+docker run --rm -v "${PWD}/runs:/app/runs" inverted-double-pendulum-rl
+```
+
+Run any project CLI command by overriding the container command:
+
+```powershell
+docker run --rm -v "${PWD}/runs:/app/runs" inverted-double-pendulum-rl idp-train --config configs/swingup.yaml --run-dir runs/swingup_v1 --device cpu
+docker run --rm -v "${PWD}/runs:/app/runs" inverted-double-pendulum-rl idp-evaluate --config configs/swingup.yaml --run-dir runs/swingup_v1 --episodes 1 --device cpu --save-animation runs/swingup_v1/animation.gif
+```
+
+The image uses a headless Matplotlib backend, so saving animations works inside Docker. Interactive `--render` windows usually need extra host display setup; prefer `--save-animation` for portable runs.
+
 ## Project Layout
 
 ```text
