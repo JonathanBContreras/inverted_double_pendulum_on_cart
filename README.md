@@ -11,6 +11,10 @@ The project includes:
 - Hybrid control experiments that combine RL, MPC-style capture, and LQR stabilization
 - Checkpoint, metrics, rollout, animation, and config snapshot outputs
 
+## System In Action
+
+![Hybrid 10-of-10 controller balancing the inverted double pendulum](runs/hybrid_10of10/latest.gif)
+
 ## Quick Start
 
 Create a virtual environment and install the project:
